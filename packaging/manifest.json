@@ -1,0 +1,10 @@
+{
+  "name": "LoxPlate",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/Wizard-Stew-Brew-Labs/LoxPlate",
+  "description": "Craftable armor barding for tamed loxes. Black Metal and Flametal sets add flat damage reduction plus an absorbing health pool; fitted with Use, removed with crouch + Use, and dropped on death.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2351",
+    "ValheimModding-Jotunn-2.30.2"
+  ]
+}

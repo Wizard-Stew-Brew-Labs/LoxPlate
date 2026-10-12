@@ -1,0 +1,23 @@
+bin/
+obj/
+dist/
+refs/
+libs/*.dll
+libs/*.version
+decompiled/
+decompiled-jotunn/
+.cache/
+.local/
+.nuget/
+docker/server-build/
+*.log
+*.user
+Thumbs.db
+.DS_Store
+# BepInEx runtime leftovers if a server ever runs from the repo root
+BepInEx
+doorstop_config.ini
+doorstop_libs
+start_game_bepinex.sh
+start_server_bepinex.sh
+winhttp.dll
