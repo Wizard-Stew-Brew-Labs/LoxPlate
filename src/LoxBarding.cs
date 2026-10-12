@@ -59,6 +59,18 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 	}
 
+	internal float Pool
+	{
+		get
+		{
+			if (!IsNetValid)
+			{
+				return 0f;
+			}
+			return _net.GetZDO().GetFloat(PoolKey, LoxPlatePlugin.MaxPool(Tier));
+		}
+	}
+
 	private void Awake()
 	{
 		_net = ((Component)this).GetComponent<ZNetView>();
@@ -169,7 +181,16 @@ public sealed class LoxBarding : MonoBehaviour
 			if (absorbed > 0f)
 			{
 				pool -= absorbed;
+				float remainder = total - absorbed;
 				hit.ApplyModifier(BardingMath.RemainderFactor(total, absorbed));
+				if (remainder <= 0.01f && (Object)(object)DamageText.instance != (Object)null)
+				{
+					// Vanilla skips its own damage text when a hit lands at
+					// zero, which made fully-absorbed hits look like the lox
+					// was taking no damage at all. Show the soaked amount as
+					// an immune-styled number instead (broadcasts to peers).
+					DamageText.instance.ShowText(HitData.DamageModifier.Immune, hit.m_point, absorbed, true);
+				}
 			}
 		}
 		_net.GetZDO().Set(PoolKey, pool);

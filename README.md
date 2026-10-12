@@ -7,7 +7,9 @@ across the plains deserves plate armor more than you do.
 Barding adds two layers of protection to a tamed lox: a flat percentage of all
 incoming damage is ignored, and whatever gets through is absorbed by a bonus
 health pool before the lox itself is hurt. The pool refills on its own while
-the lox stays out of combat.
+the lox stays out of combat. Damage the pool soaks shows up as grey
+immune-style numbers, and aiming at a barded lox shows its remaining pool, so
+you can always tell how much armor it has left.
 
 | | Black Metal Barding | Flametal Barding |
 | --- | --- | --- |

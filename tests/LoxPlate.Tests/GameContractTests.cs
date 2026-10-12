@@ -179,6 +179,14 @@ public class GameContractTests
     }
 
     [Fact]
+    public void DamageText_ShowText_Broadcast_Exists()
+    {
+        // Absorbed hits show their soaked amount as an immune-style number;
+        // ShowText routes to every peer, so server-side calls reach the shooter.
+        RequireMethod(GameType("DamageText"), "ShowText", "DamageModifier", "Vector3", "Single", "Boolean");
+    }
+
+    [Fact]
     public void Character_SpeedFactors_And_Death_Exist()
     {
         Type character = GameType("Character");

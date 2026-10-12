@@ -244,7 +244,10 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 				{
 					return;
 				}
-				__result += "\n[<color=yellow><b>Crouch + Use</b></color>] Remove barding";
+				int pool = Mathf.RoundToInt(barding.Pool);
+				int max = Mathf.RoundToInt(LoxPlatePlugin.MaxPool(barding.Tier));
+				__result += $"\nBarding: {pool} / {max}"
+					+ "\n[<color=yellow><b>Crouch + Use</b></color>] Remove barding";
 			}
 			catch (Exception)
 			{
