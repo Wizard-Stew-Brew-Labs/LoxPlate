@@ -110,6 +110,7 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 			// database finished its Awake first; a null ObjectDB (menu) is a
 			// harmless no-op that later hooks retry.
 			BardingItems.RegisterDatabase(ObjectDB.instance);
+			BardingDiagnostics.DumpLoxPrefab(__instance);
 		}
 	}
 

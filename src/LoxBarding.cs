@@ -248,34 +248,11 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 		try
 		{
-			_visual = BardingVisuals.Build(((Component)_character).transform, tier);
-			if (_lastAppliedTier == BardingItems.TierBlackMetal || tier == BardingItems.TierFlametal)
-			{
-				LogShellBounds(tier);
-			}
+			_visual = BardingVisuals.Build(_tame, _character, tier);
 		}
 		catch (Exception ex)
 		{
 			LoxPlatePlugin.Log.LogWarning($"Barding visual failed for tier {tier}: {ex.Message}");
 		}
-	}
-
-	/// <summary>One-off diagnostics for tuning the shell offsets against the
-	/// live lox model (visible in the server log during dev testing).</summary>
-	private void LogShellBounds(int tier)
-	{
-		Renderer[] renderers = ((Component)_character).GetComponentsInChildren<Renderer>();
-		if (renderers.Length == 0)
-		{
-			return;
-		}
-		Bounds bounds = renderers[0].bounds;
-		foreach (Renderer renderer in renderers)
-		{
-			bounds.Encapsulate(renderer.bounds);
-		}
-		Vector3 localMin = ((Component)_character).transform.InverseTransformPoint(bounds.min);
-		Vector3 localMax = ((Component)_character).transform.InverseTransformPoint(bounds.max);
-		LoxPlatePlugin.Log.LogDebug($"Barding tier {tier} fitted; lox local bounds min={localMin} max={localMax}");
 	}
 }
