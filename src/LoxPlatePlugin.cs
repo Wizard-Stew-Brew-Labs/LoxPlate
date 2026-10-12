@@ -266,11 +266,26 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 				return;
 			}
 			LoxBarding barding = ((Component)__instance).GetComponent<LoxBarding>();
-			if ((Object)(object)barding == (Object)null || !barding.Active)
+			if ((Object)(object)barding == (Object)null)
+			{
+				return;
+			}
+			int tier = barding.Tier;
+			if (tier == BardingItems.TierNone)
+			{
+				return;
+			}
+			bool active = barding.Active;
+			float poolBefore = barding.Pool;
+			float total = hit.GetTotalDamage();
+			Log.LogInfo($"barding hit: victim={__instance.m_name} tier={tier} active={active} "
+				+ $"pool_before={poolBefore:F0} incoming={total:F1}");
+			if (!active)
 			{
 				return;
 			}
 			barding.ApplyProtection(hit);
+			Log.LogInfo($"barding hit: after -> outgoing={hit.GetTotalDamage():F1} pool_now={barding.Pool:F0}");
 		}
 	}
 
