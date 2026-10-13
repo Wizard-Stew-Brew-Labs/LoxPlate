@@ -6,18 +6,19 @@ tier, that art replaces the procedural plates; when the bundle (or a tier's
 prefab) is missing, the mod falls back to the built-in procedural shell.
 Nothing breaks without the bundle — it is purely additive.
 
-## 1. Editor version — exact match required
+## 1. Editor version — build with 6000.6.5f1 (or newer)
 
-Bundles must be built with **Unity 6000.0.75f1** (the engine Valheim 1.0 runs;
-same version across 1.0.15–1.0.17 server builds). A bundle built with a
-different Unity version may fail to load; the mod logs a warning and falls
-back to procedural shells if so.
+The 1.0.17 client's Unity runtime **rejects bundles built by older editors**
+("not compatible with this newer version of the Unity runtime"), even when the
+marketing versions match (6000.0.75f1 == 6000.0.75f1 was refused). Unity's own
+error text is the instruction: rebuild with a newer editor. The bundle
+currently shipping was built with **Unity 6000.6.5f1** (Hub install) and loads
+on the 1.0.17 client.
 
-Installed locally at:
-
-- Editor: `~/Unity/6000.0.75f1/Editor/Unity` (tarball from
-  `download.unity3d.com/download_unity/26349cd2a5c8/LinuxEditorInstaller/`)
-- Bundle project: `~/Unity/LoxPlateBundle/` (scaffolded, opens in the editor)
+- Hub editor: `~/Unity/Hub/Editor/6000.6.5f1/`
+- Bundle project: `~/Unity/LoxPlateBundle/` (pinned to 6000.6.5f1)
+- A 6000.0.75f1 tarball install (`~/Unity/6000.0.75f1/`) predates this
+  discovery and should not be used for bundle builds anymore.
 
 First launch requires signing in with a Unity account and choosing the free
 Personal license — do this once in the GUI.
@@ -93,7 +94,8 @@ GUI first.)
 | Symptom | Cause / fix |
 | --- | --- |
 | Magenta/pink surfaces | Shader stripped — use Standard or Legacy Shaders/Diffuse |
-| Bundle ignored, warning about Unity version | Rebuild with exactly 6000.0.75f1 |
+| "not compatible with this newer version of the Unity runtime" | Bundle built by an older editor than the client's runtime — rebuild with 6000.6.5f1 (or the newest installed) |
+| Bundle ignored, `No loxplate.assets found` | File isn't next to LoxPlate.dll — check the install folder |
 | Shell buried inside the lox | Prefab wasn't authored in body space — re-center on the coordinates above |
 | Shell floats behind the lox | Prefab authored facing −Z; the lox faces +Z |
 | Shell ignores animation | The mod anchors the shell to the animated hip bone automatically — verify the prefab root has no negative/odd scale |
