@@ -19,11 +19,19 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 unzip -q "$ZIP" 'BepInEx/plugins/LoxPlate.dll' 'manifest.json' 'icon.png' -d "$TMP"
 [ -f "$TMP/BepInEx/plugins/LoxPlate.dll" ] || { echo "ERROR: LoxPlate.dll missing inside $ZIP" >&2; exit 1; }
+if unzip -q "$ZIP" 'BepInEx/plugins/loxplate.assets' -d "$TMP" 2>/dev/null; then
+  HAS_BUNDLE=1
+else
+  HAS_BUNDLE=0
+fi
 
 docker exec "$CONTAINER" mkdir -p "$DEST"
 docker cp "$TMP/BepInEx/plugins/LoxPlate.dll" "$CONTAINER:$DEST/LoxPlate.dll"
 docker cp "$TMP/manifest.json" "$CONTAINER:$DEST/manifest.json"
 docker cp "$TMP/icon.png" "$CONTAINER:$DEST/icon.png"
+if [ "$HAS_BUNDLE" = "1" ]; then
+  docker cp "$TMP/BepInEx/plugins/loxplate.assets" "$CONTAINER:$DEST/loxplate.assets"
+fi
 
 if [ "$WAS_RUNNING" = "true" ]; then
   docker restart "$CONTAINER" >/dev/null

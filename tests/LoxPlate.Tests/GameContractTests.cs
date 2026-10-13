@@ -73,6 +73,8 @@ public class GameContractTests
             // assembly so its types (Utils, StringExtensionMethods) are
             // visible to the fallback scan below.
             GameUtils = _mlc.LoadFromAssemblyPath(Path.Combine(refs, "assembly_utils.dll"));
+            // AssetBundle lives in its own module (used by the loxplate.assets loader).
+            _mlc.LoadFromAssemblyPath(Path.Combine(refs, "UnityEngine.AssetBundleModule.dll"));
             Mod = _mlc.LoadFromAssemblyPath(modDll);
             ModBytes = File.ReadAllBytes(modDll);
             All = _mlc.GetAssemblies().ToList();
@@ -184,6 +186,14 @@ public class GameContractTests
         // Absorbed hits show their soaked amount as an immune-style number;
         // ShowText routes to every peer, so server-side calls reach the shooter.
         RequireMethod(GameType("DamageText"), "ShowText", "DamageModifier", "Vector3", "Single", "Boolean");
+    }
+
+    [Fact]
+    public void AssetBundle_Loading_Surface_Exists()
+    {
+        MethodInfo loadFromFile = FindMethod(GameType("UnityEngine.AssetBundle"), "LoadFromFile", "String");
+        Assert.True(loadFromFile != null, "AssetBundle.LoadFromFile(string) missing");
+        Assert.True(loadFromFile!.ReturnType.Name == "AssetBundle", "LoadFromFile return type changed");
     }
 
     [Fact]
@@ -400,6 +410,7 @@ public class GameContractTests
     [InlineData("LoxPelt")]
     [InlineData("LinenThread")]
     [InlineData("Forge")]
+    [InlineData("loxplate.assets")]
     public void Identity_Strings_Are_Compiled_Into_The_Mod(string expected)
     {
         Assert.True(ContainsEncoded(Asms.Value.ModBytes, expected),

@@ -60,6 +60,13 @@ internal static class BardingVisuals
 
 		int layer = ((Component)character).gameObject.layer;
 		root.gameObject.layer = layer;
+		// Custom art first (loxplate.assets), procedural composition as the
+		// fallback so the mod works with or without shipped assets.
+		GameObject shell = BardingAssets.InstantiateShell(tier, root, layer);
+		if (shell != null)
+		{
+			return root.gameObject;
+		}
 		BuildParts(root, tier, layer);
 		return root.gameObject;
 	}

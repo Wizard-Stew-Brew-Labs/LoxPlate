@@ -42,7 +42,11 @@ internal static class BardingIcon
 
 			stage = new GameObject("LoxPlateIconStage");
 			stage.transform.position = new Vector3(10000f, 10000f, 10000f);
-			BardingVisuals.BuildParts(stage.transform, tier, 31);
+			bool customShell = BardingAssets.InstantiateShell(tier, stage.transform, 31) != null;
+			if (!customShell)
+			{
+				BardingVisuals.BuildParts(stage.transform, tier, 31);
+			}
 
 			Renderer[] renderers = stage.GetComponentsInChildren<Renderer>();
 			if (renderers.Length == 0)
@@ -50,21 +54,25 @@ internal static class BardingIcon
 				throw new InvalidOperationException("shell has no renderers");
 			}
 			// Neutralize every material to the plain shader so the icon does
-			// not depend on donor shader availability.
-			foreach (Renderer renderer in renderers)
+			// not depend on donor shader availability - but keep authored
+			// bundle materials untouched so custom art shows as authored.
+			if (!customShell)
 			{
-				Material[] materials = renderer.sharedMaterials;
-				for (int i = 0; i < materials.Length; i++)
+				foreach (Renderer renderer in renderers)
 				{
-					Material neutral = new Material(shader);
-					Material original = materials[i];
-					if ((Object)(object)original != (Object)null && original.HasProperty("_Color"))
+					Material[] materials = renderer.sharedMaterials;
+					for (int i = 0; i < materials.Length; i++)
 					{
-						neutral.color = original.color;
+						Material neutral = new Material(shader);
+						Material original = materials[i];
+						if ((Object)(object)original != (Object)null && original.HasProperty("_Color"))
+						{
+							neutral.color = original.color;
+						}
+						materials[i] = neutral;
 					}
-					materials[i] = neutral;
+					renderer.sharedMaterials = materials;
 				}
-				renderer.sharedMaterials = materials;
 			}
 			Bounds bounds = renderers[0].bounds;
 			foreach (Renderer renderer in renderers)

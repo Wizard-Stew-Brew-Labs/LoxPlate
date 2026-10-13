@@ -23,6 +23,10 @@ cp "$DLL" "$OUT/stage/BepInEx/plugins/LoxPlate.dll"
 cp README.md "$OUT/stage/"
 cp CHANGELOG.md "$OUT/stage/"
 cp packaging/icon.png "$OUT/stage/"
+# Optional custom-asset bundle (see BUNDLING.md): shipped next to the DLL.
+if [ -f packaging/assets/loxplate.assets ]; then
+  cp packaging/assets/loxplate.assets "$OUT/stage/BepInEx/plugins/loxplate.assets"
+fi
 # Second copy inside BepInEx/plugins/: mod managers (Gale) only look for
 # icon.png in the extracted install dir, not zip metadata - BepInEx ignores
 # non-DLL files there, so this is harmless and makes the thumbnail show.

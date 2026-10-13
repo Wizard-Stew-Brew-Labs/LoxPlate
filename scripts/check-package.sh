@@ -19,6 +19,9 @@ unzip -l "$ZIP" | grep -q 'BepInEx/plugins/icon.png$' || { echo "FAIL: plugins/i
 unzip -l "$ZIP" | grep -q ' icon.png$' || { echo "FAIL: icon.png missing at root"; exit 1; }
 unzip -l "$ZIP" | grep -q ' README.md$' || { echo "FAIL: README.md missing"; exit 1; }
 unzip -l "$ZIP" | grep -q ' CHANGELOG.md$' || { echo "FAIL: CHANGELOG.md missing"; exit 1; }
+if [ -f packaging/assets/loxplate.assets ]; then
+  unzip -l "$ZIP" | grep -q 'BepInEx/plugins/loxplate.assets$' || { echo "FAIL: loxplate.assets missing from plugins/"; exit 1; }
+fi
 
 python3 - "$ZIP" "$VERSION" <<'EOF'
 import json, struct, sys, zipfile

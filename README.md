@@ -37,7 +37,9 @@ syncs to everyone on the server.
 The visual shell is built in-game from Valheim's own materials — black metal
 plate for the first tier, smoldering flametal plate with ember edges for the
 second. It carries no collision, so riding, hitching (see LoxCarts) and combat
-behave exactly as before.
+behave exactly as before. Want your own art? Drop a custom
+`loxplate.assets` AssetBundle next to `LoxPlate.dll` and it replaces the
+procedural shells — see `BUNDLING.md` in the repo for the full pipeline.
 
 ## Configuration
 
