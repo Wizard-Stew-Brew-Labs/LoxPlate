@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -19,6 +18,10 @@ public sealed class LoxBarding : MonoBehaviour
 	internal static readonly int TierKey = StringExtensionMethods.GetStableHashCode("lb_tier");
 	internal static readonly int PoolKey = StringExtensionMethods.GetStableHashCode("lb_pool");
 	internal static readonly int LastHitKey = StringExtensionMethods.GetStableHashCode("lb_lastHit");
+	internal static readonly int DurabilityKey = StringExtensionMethods.GetStableHashCode("lb_durability");
+
+	/// <summary>Barding durability ceiling; matches the item's max durability.</summary>
+	internal const float MaxDurability = 100f;
 
 	private ZNetView _net;
 	private Tameable _tame;
@@ -27,6 +30,7 @@ public sealed class LoxBarding : MonoBehaviour
 	private GameObject _visual;
 	private int _lastAppliedTier = -1;
 	private float _nextTierCheck;
+	private float _nextRegenTick;
 
 	internal ZNetView Net => _net;
 
@@ -71,6 +75,18 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 	}
 
+	internal float Durability
+	{
+		get
+		{
+			if (!IsNetValid)
+			{
+				return MaxDurability;
+			}
+			return Mathf.Clamp(_net.GetZDO().GetFloat(DurabilityKey, MaxDurability), 0f, MaxDurability);
+		}
+	}
+
 	private void Awake()
 	{
 		_net = ((Component)this).GetComponent<ZNetView>();
@@ -84,21 +100,60 @@ public sealed class LoxBarding : MonoBehaviour
 
 	private void Update()
 	{
-		if ((Object)(object)_net == (Object)null || Time.time < _nextTierCheck)
+		if ((Object)(object)_net == (Object)null)
 		{
 			return;
 		}
-		_nextTierCheck = Time.time + 0.4f;
-		if (!_net.IsValid())
+		if (Time.time >= _nextTierCheck)
+		{
+			_nextTierCheck = Time.time + 0.4f;
+			if (_net.IsValid())
+			{
+				int tier = Tier;
+				if (tier != _lastAppliedTier)
+				{
+					ApplyVisual(tier);
+				}
+			}
+		}
+		if (Time.time >= _nextRegenTick)
+		{
+			_nextRegenTick = Time.time + 1f;
+			RegenerationTick();
+		}
+	}
+
+	/// <summary>Owner-side periodic regeneration: the pool climbs in the ZDO
+	/// (and therefore in the hover readout) while the animal stays out of
+	/// combat, instead of only being recomputed retroactively on the next
+	/// hit. Damage ticks (e.g. poison) keep resetting the delay, by design.
+	/// </summary>
+	private void RegenerationTick()
+	{
+		if (!IsOwner || (Object)(object)_character == (Object)null || _character.IsDead())
 		{
 			return;
 		}
 		int tier = Tier;
-		if (tier == _lastAppliedTier)
+		if (tier == BardingItems.TierNone)
 		{
 			return;
 		}
-		ApplyVisual(tier);
+		float max = LoxPlatePlugin.MaxPool(tier);
+		float pool = _net.GetZDO().GetFloat(PoolKey, max);
+		if (pool >= max)
+		{
+			return;
+		}
+		double worldTime = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : 0.0;
+		float lastHit = _net.GetZDO().GetFloat(LastHitKey, (float)worldTime);
+		float regenerated = BardingMath.Regenerate(pool, max,
+			(float)(worldTime - (double)lastHit),
+			LoxPlatePlugin.RegenDelaySeconds.Value, LoxPlatePlugin.RegenPerSecond.Value);
+		if (regenerated > pool + 0.01f)
+		{
+			_net.GetZDO().Set(PoolKey, regenerated);
+		}
 	}
 
 	/// <summary>Player-initiated fit request (from the Tameable.UseItem prefix).</summary>
@@ -129,8 +184,9 @@ public sealed class LoxBarding : MonoBehaviour
 			{
 				return;
 			}
-			DropBarding(current);
+			DropBarding(current, GetFloat(DurabilityKey, MaxDurability));
 			SetTier(BardingItems.TierNone);
+			_net.GetZDO().Set(DurabilityKey, MaxDurability);
 			return;
 		}
 		if ((Object)(object)_tame == (Object)null || !_tame.IsTamed()
@@ -140,13 +196,15 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 		if (current != BardingItems.TierNone && current != tier)
 		{
-			// Replacing one tier with another returns the previous set.
-			DropBarding(current);
+			// Replacing one tier with another returns the previous set
+			// (with whatever wear it had accumulated).
+			DropBarding(current, GetFloat(DurabilityKey, MaxDurability));
 		}
 		double worldTime = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : 0.0;
 		SetTier(tier);
 		_net.GetZDO().Set(PoolKey, LoxPlatePlugin.MaxPool(tier));
 		_net.GetZDO().Set(LastHitKey, (float)worldTime);
+		_net.GetZDO().Set(DurabilityKey, Mathf.Clamp(GetFloat(DurabilityKey, MaxDurability), 0f, MaxDurability));
 		ApplyVisual(tier);
 	}
 
@@ -174,8 +232,10 @@ public sealed class LoxBarding : MonoBehaviour
 		{
 			hit.ApplyModifier(1f - reduction);
 		}
+		// Worn-out barding keeps its flat reduction but can no longer absorb.
+		float durability = Mathf.Clamp(GetFloat(DurabilityKey, MaxDurability), 0f, MaxDurability);
 		float total = hit.GetTotalDamage();
-		if (total > 0f)
+		if (total > 0f && durability > 0f)
 		{
 			float absorbed = BardingMath.Absorb(pool, total);
 			if (absorbed > 0f)
@@ -195,10 +255,19 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 		_net.GetZDO().Set(PoolKey, pool);
 		_net.GetZDO().Set(LastHitKey, (float)worldTime);
+		if (total > 0f && durability > 0f && LoxPlatePlugin.DurabilityPerAbsorb.Value > 0f)
+		{
+			// Every hit the barding soaks wears it down; repair the item at
+			// a forge to restore full protection.
+			_net.GetZDO().Set(DurabilityKey,
+				Mathf.Max(0f, durability - LoxPlatePlugin.DurabilityPerAbsorb.Value));
+		}
 	}
 
-	/// <summary>Spawn the barding item back into the world (unequip / death).</summary>
-	internal void DropBarding(int tier)
+	/// <summary>Spawn the barding item back into the world (unequip / death),
+	/// carrying its remaining durability so the forge repair means something.
+	/// </summary>
+	internal void DropBarding(int tier, float durability)
 	{
 		GameObject prefab = BardingItems.PrefabOf(tier);
 		if ((Object)(object)prefab == (Object)null)
@@ -209,10 +278,21 @@ public sealed class LoxBarding : MonoBehaviour
 		Vector3 center = (Object)(object)_character != (Object)null
 			? _character.GetCenterPoint()
 			: ((Component)this).transform.position + Vector3.up;
-		CharacterDrop.DropItems(new List<KeyValuePair<GameObject, int>>
+		GameObject item = Object.Instantiate(prefab, center + Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f) * Vector3.forward * 0.4f,
+			Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f));
+		item.name = prefab.name;
+		ItemDrop drop = item.GetComponent<ItemDrop>();
+		if ((Object)(object)drop != (Object)null)
 		{
-			new KeyValuePair<GameObject, int>(prefab, 1),
-		}, center, 0.5f, false);
+			drop.m_itemData.m_durability = Mathf.Clamp(durability, 0f, MaxDurability);
+			drop.m_itemData.m_stack = 1;
+			drop.m_itemData.m_worldLevel = (byte)(Game.instance != null ? Game.m_worldLevel : 0);
+		}
+		Rigidbody body = item.GetComponent<Rigidbody>();
+		if ((Object)(object)body != (Object)null)
+		{
+			body.AddForce(Vector3.up * 4f, ForceMode.VelocityChange);
+		}
 	}
 
 	internal void ClearState()
@@ -220,6 +300,7 @@ public sealed class LoxBarding : MonoBehaviour
 		if (IsNetValid)
 		{
 			SetTier(BardingItems.TierNone);
+			_net.GetZDO().Set(DurabilityKey, MaxDurability);
 		}
 		if ((Object)(object)_visual != (Object)null)
 		{
@@ -232,6 +313,11 @@ public sealed class LoxBarding : MonoBehaviour
 	private void SetTier(int tier)
 	{
 		_net.GetZDO().Set(TierKey, tier);
+	}
+
+	private float GetFloat(int key, float defaultValue)
+	{
+		return _net.GetZDO().GetFloat(key, defaultValue);
 	}
 
 	private void ApplyVisual(int tier)

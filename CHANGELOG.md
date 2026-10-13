@@ -9,7 +9,13 @@ Initial release.
 - Fitting via Use on a tamed lox; removal via crouch + Use.
 - Protection model: flat damage reduction applied to every hit, then an
   absorbing health pool with out-of-combat regeneration. Absorbed damage
-  displays as immune-style numbers; aiming at a barded lox shows its pool.
+  displays as immune-style numbers; aiming at a barded lox shows its pool and
+  remaining durability.
+- Durability: absorbed hits wear the set (1 per hit, configurable); worn-out
+  barding keeps its reduction but stops absorbing. Removed or dropped barding
+  carries its wear and is repaired with the vanilla forge repair tab.
+- Removal via crouch + Use works both empty-handed (Interact path) and with
+  an item selected (UseItem path); Alt+Use rename keeps vanilla precedence.
 - Movement speed penalty while barded (configurable).
 - Barding state persists on the animal's ZDO across save/load and syncs to
   all peers; dropped on death (configurable, recoverable).

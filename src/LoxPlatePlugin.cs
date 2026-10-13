@@ -37,6 +37,8 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 
 	internal static ConfigEntry<float> RegenDelaySeconds;
 
+	internal static ConfigEntry<float> DurabilityPerAbsorb;
+
 	private void Awake()
 	{
 		Log = Logger;
@@ -68,6 +70,9 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 		RegenDelaySeconds = Config.Bind("Pool", "RegenDelaySeconds", 30f,
 			new ConfigDescription("Seconds without taking damage before the pool starts regenerating (0-600).",
 				new AcceptableValueRange<float>(0f, 600f)));
+		DurabilityPerAbsorb = Config.Bind("Barding", "DurabilityPerAbsorb", 1f,
+			new ConfigDescription("Durability the barding loses per hit it absorbs. At zero durability it only gives flat damage reduction until repaired at a forge. 0 disables wear.",
+				new AcceptableValueRange<float>(0f, 10f)));
 		Config.Save();
 		_harmony = new Harmony("benjamin.loxplate");
 		_harmony.PatchAll(typeof(LoxPlatePlugin).Assembly);
@@ -227,8 +232,58 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 				return false;
 			}
 			barding.RequestFit(held);
+			// Carry the item's wear onto the animal: a damaged set fits as
+			// damaged and must be repaired at a forge.
+			ZNetView tameNet = ((Component)tame).GetComponent<ZNetView>();
+			if ((Object)(object)tameNet != (Object)null && tameNet.IsValid())
+			{
+				tameNet.GetZDO().Set(LoxBarding.DurabilityKey,
+					Mathf.Clamp(item.m_durability, 0f, LoxBarding.MaxDurability));
+			}
 			user.GetInventory().RemoveOneItem(item);
 			user.Message(MessageHud.MessageType.Center, item.m_shared.m_name + " fitted");
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(Tameable), "Interact")]
+	private static class RemoveBardingOnCrouchUse
+	{
+		// Empty-handed Use reaches Tameable.Interact (vanilla pet/command),
+		// not UseItem - so crouch + Use removal must hook this path too, or
+		// it fights the pet interaction. Alt+Use (rename) keeps vanilla
+		// precedence; hold-Use is ignored as in vanilla.
+		private static bool Prefix(Tameable __instance, Humanoid user, bool hold, bool alt, ref bool __result)
+		{
+			try
+			{
+				return HandleInteract(__instance, user, hold, alt, ref __result);
+			}
+			catch (Exception ex)
+			{
+				Log.LogWarning("barding removal failed: " + ex);
+				return true;
+			}
+		}
+
+		private static bool HandleInteract(Tameable tame, Humanoid user, bool hold, bool alt, ref bool __result)
+		{
+			if (hold || alt || (Object)(object)user == (Object)null)
+			{
+				return true;
+			}
+			LoxBarding barding = ((Component)tame).GetComponent<LoxBarding>();
+			if ((Object)(object)barding == (Object)null || !barding.Active)
+			{
+				return true;
+			}
+			if (!user.IsCrouching())
+			{
+				return true;
+			}
+			barding.RequestUnequip();
+			user.Message(MessageHud.MessageType.Center, "Barding removed");
+			__result = true;
 			return false;
 		}
 	}
@@ -247,7 +302,11 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 				}
 				int pool = Mathf.RoundToInt(barding.Pool);
 				int max = Mathf.RoundToInt(LoxPlatePlugin.MaxPool(barding.Tier));
-				__result += $"\nBarding: {pool} / {max}"
+				int durability = Mathf.RoundToInt(barding.Durability);
+				string wear = durability <= 0
+					? " — worn out (repair at a forge)"
+					: $" · {durability}%";
+				__result += $"\nBarding: {pool} / {max}{wear}"
 					+ "\n[<color=yellow><b>Crouch + Use</b></color>] Remove barding";
 			}
 			catch (Exception)
@@ -291,7 +350,7 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 					+ $"enemyDamageRate={Game.m_enemyDamageRate} localDamageTakenRate={Game.m_localDamgeTakenRate}");
 			}
 			float total = hit.GetTotalDamage();
-			Log.LogInfo($"hit: victim={__instance.name} player={__instance.IsPlayer()} incoming={total:F1}");
+			Log.LogDebug($"hit: victim={__instance.name} player={__instance.IsPlayer()} incoming={total:F1}");
 			LoxBarding barding = ((Component)__instance).GetComponent<LoxBarding>();
 			if ((Object)(object)barding == (Object)null)
 			{
@@ -366,7 +425,7 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 				}
 				if (RecoverOnDeath.Value)
 				{
-					barding.DropBarding(tier);
+					barding.DropBarding(tier, barding.Durability);
 				}
 				barding.ClearState();
 				Log.LogDebug($"Barding tier {tier} removed on death of {__instance.m_name}");

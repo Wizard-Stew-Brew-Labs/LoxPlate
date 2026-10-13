@@ -352,6 +352,7 @@ public class GameContractTests
         yield return new object[] { "ObjectDB", "CopyOtherDB" };
         yield return new object[] { "Tameable", "Awake" };
         yield return new object[] { "Tameable", "UseItem" };
+        yield return new object[] { "Tameable", "Interact" };
         yield return new object[] { "Tameable", "GetHoverText" };
         yield return new object[] { "Character", "ApplyDamage" };
         yield return new object[] { "Character", "GetJogSpeedFactor" };

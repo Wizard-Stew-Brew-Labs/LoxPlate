@@ -228,6 +228,11 @@ internal static class BardingItems
 		drop.m_itemData.m_shared.m_description = description;
 		drop.m_itemData.m_shared.m_weight = weight;
 		drop.m_itemData.m_shared.m_maxStackSize = 1;
+		// Durability makes the set forge-repairable: absorbing hits wears it
+		// (see LoxBarding.ApplyProtection), the vanilla repair tab restores it.
+		drop.m_itemData.m_shared.m_useDurability = true;
+		drop.m_itemData.m_shared.m_maxDurability = LoxBarding.MaxDurability;
+		drop.m_itemData.m_shared.m_canBeReparied = true;
 		Sprite icon = BardingIcon.Render(clone, donor, tier);
 		if (icon != null)
 		{
@@ -242,14 +247,23 @@ internal static class BardingItems
 
 	private static void EnsureRecipes(ObjectDB db)
 	{
-		AddRecipe(db, "Recipe_" + BlackMetalPrefab, _blackMetal, new[]
+		// The forge recipe doubles as the repair path: 1.0's repair tab
+		// resolves the station through the item's recipe, so damaged barding
+		// is listed for repair at any forge without custom UI.
+		CraftingStation station = FindStation("forge", "Forge");
+		if ((Object)(object)station == (Object)null)
+		{
+			LoxPlatePlugin.Log.LogWarning("Forge CraftingStation unavailable; barding recipe deferred");
+			return;
+		}
+		AddRecipe(db, "Recipe_" + BlackMetalPrefab, _blackMetal, station, new[]
 		{
 			new KeyValuePair<string, int>("BlackMetal", 20),
 			new KeyValuePair<string, int>("LoxPelt", 12),
 			new KeyValuePair<string, int>("LinenThread", 10),
 			new KeyValuePair<string, int>("GoblinTotem", 1),
 		}, minStationLevel: 2);
-		AddRecipe(db, "Recipe_" + FlametalPrefab, _flametal, new[]
+		AddRecipe(db, "Recipe_" + FlametalPrefab, _flametal, station, new[]
 		{
 			new KeyValuePair<string, int>("Flametal", 16),
 			new KeyValuePair<string, int>("LoxPelt", 16),
@@ -259,7 +273,7 @@ internal static class BardingItems
 	}
 
 	private static void AddRecipe(ObjectDB db, string recipeName, GameObject itemPrefab,
-		KeyValuePair<string, int>[] ingredients, int minStationLevel)
+		CraftingStation station, KeyValuePair<string, int>[] ingredients, int minStationLevel)
 	{
 		if ((Object)(object)itemPrefab == (Object)null)
 		{
@@ -267,14 +281,6 @@ internal static class BardingItems
 		}
 		if (db.m_recipes.Any((Recipe r) => r != null && r.name == recipeName))
 		{
-			return;
-		}
-		// Crafting stations are scene pieces, not ObjectDB items: the forge
-		// lives in ZNetScene as "forge" (the workbench as "workbench").
-		CraftingStation station = FindStation("forge", "Forge");
-		if ((Object)(object)station == (Object)null)
-		{
-			LoxPlatePlugin.Log.LogWarning("Forge CraftingStation unavailable; barding recipe deferred");
 			return;
 		}
 		List<Piece.Requirement> requirements = new List<Piece.Requirement>();

@@ -35,6 +35,14 @@ protects against **enemy** damage (raids, fulings, deathsquitos); to see it
 work, let a fuling take a swing at the lox, or use the butchering knife
 (`KnifeButcher`), the one player weapon that can strike a tame.
 
+**Wear and repair:** every hit the barding's pool absorbs wears the set down
+(1 durability per absorbed hit by default). Worn-out barding keeps its flat
+damage reduction but stops absorbing. Take the set off (crouch + Use) and
+repair it at any forge like ordinary armor — the vanilla repair tab restores
+it. Aiming at a barded lox shows the set's remaining durability alongside the
+pool. Barding never degrades while fitted and unworn; `DurabilityPerAbsorb = 0`
+in the config disables wear entirely.
+
 Each lox wears one set at a time. Fitting a different tier returns the old one.
 When a barded lox dies, its barding drops with the corpse (configurable).
 Barding is fitted per animal and persists through save/load; the armor state
@@ -64,6 +72,7 @@ restart. All values apply to both sets unless noted.
 | `[FlametalBarding] SpeedPenalty` | `0.05` | Movement penalty (0–0.5). |
 | `[Pool] RegenPerSecond` | `5` | Pool refill per second out of combat (0–100). |
 | `[Pool] RegenDelaySeconds` | `30` | Seconds unharmed before the pool refills (0–600). |
+| `[Barding] DurabilityPerAbsorb` | `1` | Durability lost per absorbed hit; 0 disables wear (0–10). |
 
 ## Installation
 
