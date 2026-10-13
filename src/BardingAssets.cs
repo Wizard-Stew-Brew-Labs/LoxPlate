@@ -102,10 +102,19 @@ internal static class BardingAssets
 				// Headless server: skip bundle loading entirely.
 				return;
 			}
+			// Try the file path first, then from-memory: some Unity runtime
+			// builds reject file-loaded bundles with a misleading version
+			// error while accepting the exact same bytes from memory
+			// (ValheimArmory ships its bundle embedded for this reason).
 			_bundle = AssetBundle.LoadFromFile(path);
 			if ((Object)(object)_bundle == (Object)null)
 			{
-				LoxPlatePlugin.Log.LogWarning($"{path} could not be loaded (wrong Unity version?); procedural shells in use");
+				LoxPlatePlugin.Log.LogInfo($"LoadFromFile failed for {Path.GetFileName(path)} - retrying from memory");
+				_bundle = AssetBundle.LoadFromMemory(File.ReadAllBytes(path));
+			}
+			if ((Object)(object)_bundle == (Object)null)
+			{
+				LoxPlatePlugin.Log.LogWarning($"{path} could not be loaded; procedural shells in use");
 				return;
 			}
 			LoxPlatePlugin.Log.LogInfo($"Custom asset bundle loaded: {Path.GetFileName(path)}");
