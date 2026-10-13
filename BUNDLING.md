@@ -6,19 +6,24 @@ tier, that art replaces the procedural plates; when the bundle (or a tier's
 prefab) is missing, the mod falls back to the built-in procedural shell.
 Nothing breaks without the bundle — it is purely additive.
 
-## 1. Editor version — use Unity 6000.0.61f1
+## 1. Editor version — use Unity 6000.0.66f2
 
-Build bundles with **Unity 6000.0.61f1** — the version the Jötunn modding
-docs pin for Valheim 1.0 and the one the community validates against. The
-1.0.17 client's runtime is a hotfixed 6000.0.75 build that refuses bundles
-from both the public 6000.0.75f1 editor ("older runtime") and newer editors
-like 6000.6.5f1 ("wrong version"); 6000.0.61f1-built bundles load cleanly.
+Build bundles with **Unity 6000.0.66f2** — the exact editor used by
+ValheimArmory, the reference custom-asset mod verified working on the 1.0.17
+client. The acceptance window is razor-thin: 6000.0.61f1 and 6000.0.75f1
+(public editor) builds are refused as "older runtime", 6000.0.84f1 also
+refused, 6000.6.5f1 refused as "wrong version" (too new). The 1.0.17 client's
+runtime is a hotfixed 6000.0.75 build whose internal revision sits between the
+public .75f1 and .84f1 editors; only bundles built by an editor close below it
+load. 6000.0.66f2 is the empirically proven choice (file **and** memory loads
+were both tested on the client — same refusal, so the load path is irrelevant,
+the editor revision is what matters).
 
-- Editor: `~/Unity/6000.0.61f1/Editor/Unity`
-  (tarball: `download.unity3d.com/download_unity/74a0adb02c31/...`)
-- Bundle project: `~/Unity/LoxPlateBundle/` (pinned to 6000.0.61f1)
-- Other installs on this machine (6000.0.75f1, 6000.0.84f1, Hub's 6000.6.5f1)
-  predate this discovery and produce refused bundles — don't use them.
+- Editor: `~/Unity/6000.0.66f2/Editor/Unity`
+  (tarball: `download.unity3d.com/download_unity/b20bc5da3050/...`)
+- Bundle project: `~/Unity/LoxPlateBundle/` (pinned to 6000.0.66f2)
+- Other installs on this machine (6000.0.61f1, 6000.0.75f1, 6000.0.84f1,
+  Hub's 6000.6.5f1) produce refused bundles — don't use them.
 
 First launch requires signing in with a Unity account and choosing the free
 Personal license — do this once in the GUI.
@@ -94,7 +99,7 @@ GUI first.)
 | Symptom | Cause / fix |
 | --- | --- |
 | Magenta/pink surfaces | Shader stripped — use Standard or Legacy Shaders/Diffuse |
-| "not compatible with this newer version" / "not built with the right version or build target" | Bundle built with the wrong editor — rebuild with Unity 6000.0.61f1 |
+| "not compatible with this newer version" / "not built with the right version or build target" | Bundle built with the wrong editor — rebuild with Unity 6000.0.66f2 |
 | Bundle ignored, `No loxplate.assets found` | File isn't next to LoxPlate.dll — check the install folder |
 | Shell buried inside the lox | Prefab wasn't authored in body space — re-center on the coordinates above |
 | Shell floats behind the lox | Prefab authored facing −Z; the lox faces +Z |
