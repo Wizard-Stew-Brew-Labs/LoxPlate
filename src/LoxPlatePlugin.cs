@@ -259,12 +259,39 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 	[HarmonyPatch(typeof(Character), "ApplyDamage")]
 	private static class BardingProtects
 	{
+		private static bool _ratesLogged;
+
 		private static void Prefix(Character __instance, HitData hit)
 		{
-			if ((Object)(object)hit == (Object)null)
+			// Contained so a bug here can never skip the original method and
+			// nullify damage globally (a throwing Harmony prefix does exactly
+			// that - learned the hard way).
+			try
+			{
+				HandleHit(__instance, hit);
+			}
+			catch (Exception ex)
+			{
+				Log.LogWarning($"barding hit handling failed: {ex}");
+			}
+		}
+
+		private static void HandleHit(Character __instance, HitData hit)
+		{
+			// HitData is a plain class - a plain null check, NOT the
+			// UnityEngine.Object cast idiom (which throws for it).
+			if (hit == null)
 			{
 				return;
 			}
+			if (!_ratesLogged && Game.instance != null)
+			{
+				_ratesLogged = true;
+				Log.LogInfo($"damage rates: playerDamageRate={Game.m_playerDamageRate} "
+					+ $"enemyDamageRate={Game.m_enemyDamageRate} localDamageTakenRate={Game.m_localDamgeTakenRate}");
+			}
+			float total = hit.GetTotalDamage();
+			Log.LogInfo($"hit: victim={__instance.name} player={__instance.IsPlayer()} incoming={total:F1}");
 			LoxBarding barding = ((Component)__instance).GetComponent<LoxBarding>();
 			if ((Object)(object)barding == (Object)null)
 			{
@@ -277,7 +304,6 @@ public sealed class LoxPlatePlugin : BaseUnityPlugin
 			}
 			bool active = barding.Active;
 			float poolBefore = barding.Pool;
-			float total = hit.GetTotalDamage();
 			Log.LogInfo($"barding hit: victim={__instance.m_name} tier={tier} active={active} "
 				+ $"pool_before={poolBefore:F0} incoming={total:F1}");
 			if (!active)
