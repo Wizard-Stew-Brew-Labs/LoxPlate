@@ -6,21 +6,33 @@ tier, that art replaces the procedural plates; when the bundle (or a tier's
 prefab) is missing, the mod falls back to the built-in procedural shell.
 Nothing breaks without the bundle — it is purely additive.
 
-## 1. Editor version — use Unity 6000.0.66f2
+## 1. Editor and build target — Unity 6000.0.66f2, **StandaloneWindows**
 
-Build bundles with **Unity 6000.0.66f2** — the exact editor used by
-ValheimArmory, the reference custom-asset mod verified working on the 1.0.17
-client. The acceptance window is razor-thin: 6000.0.61f1 and 6000.0.75f1
-(public editor) builds are refused as "older runtime", 6000.0.84f1 also
-refused, 6000.6.5f1 refused as "wrong version" (too new). The 1.0.17 client's
-runtime is a hotfixed 6000.0.75 build whose internal revision sits between the
-public .75f1 and .84f1 editors; only bundles built by an editor close below it
-load. 6000.0.66f2 is the empirically proven choice (file **and** memory loads
-were both tested on the client — same refusal, so the load path is irrelevant,
-the editor revision is what matters).
+Two settings matter, and the **build target is the one that actually broke
+loading**:
+
+1. **Build target: `StandaloneWindows`** (serialized target field = 5).
+   Verified by parsing the bundles on the user's machine with UnityPy: the
+   working ValheimArmory bundle carries target 5, every refused LoxPlate
+   bundle carried target 24 (StandaloneLinux64). The 1.0.17 client refuses
+   Linux64-target bundles with a **misleading** "not compatible with this
+   newer version of the Unity runtime" error — both via `LoadFromFile` and
+   `LoadFromMemory`. Target 5 loads cleanly on the native Linux client, and
+   meshes/materials/shaders (compiled for all desktop graphics APIs) render
+   fine. This is the long-standing Valheim community convention.
+2. **Editor: Unity 6000.0.66f2** — the exact editor ValheimArmory ships
+   bundles from. The client's runtime is a hotfixed 6000.0.75 build, and
+   bundle-editor revisions anywhere near it (.61/.75/.84) were refused as
+   well; .66f2 + target 5 is the combination proven end-to-end on the user's
+   install.
 
 - Editor: `~/Unity/6000.0.66f2/Editor/Unity`
   (tarball: `download.unity3d.com/download_unity/b20bc5da3050/...`)
+- **Windows Build Support module**: the tarball editor lacks it; installed
+  by hand from `MacEditorTargetInstaller/UnitySetup-Windows-Mono-Support-
+  for-Editor-6000.0.66f2.pkg` (the same pkg the Linux Hub uses) — extract
+  the Payload and copy its contents to
+  `Editor/Data/PlaybackEngines/WindowsStandaloneSupport/`
 - Bundle project: `~/Unity/LoxPlateBundle/` (pinned to 6000.0.66f2)
 - Other installs on this machine (6000.0.61f1, 6000.0.75f1, 6000.0.84f1,
   Hub's 6000.6.5f1) produce refused bundles — don't use them.
@@ -99,7 +111,7 @@ GUI first.)
 | Symptom | Cause / fix |
 | --- | --- |
 | Magenta/pink surfaces | Shader stripped — use Standard or Legacy Shaders/Diffuse |
-| "not compatible with this newer version" / "not built with the right version or build target" | Bundle built with the wrong editor — rebuild with Unity 6000.0.66f2 |
+| "not compatible with this newer version" / "not built with the right version or build target" | Wrong build target or editor — rebuild with Unity 6000.0.66f2 targeting **StandaloneWindows** |
 | Bundle ignored, `No loxplate.assets found` | File isn't next to LoxPlate.dll — check the install folder |
 | Shell buried inside the lox | Prefab wasn't authored in body space — re-center on the coordinates above |
 | Shell floats behind the lox | Prefab authored facing −Z; the lox faces +Z |

@@ -7,6 +7,9 @@ Initial release.
 - Black Metal Barding and Flametal Barding, crafted at a forge (Fuling Totem
   and Charred Warrior Trophy as the prestige ingredients respectively).
 - Fitting via Use on a tamed lox; removal via crouch + Use.
+- Removing (or replacing) a barding returns it to the removing player's
+  inventory when there is room (durability preserved); otherwise it drops at
+  the lox's feet.
 - Protection model: flat damage reduction applied to every hit, then an
   absorbing health pool with out-of-combat regeneration. Absorbed damage
   displays as immune-style numbers; aiming at a barded lox shows its pool and

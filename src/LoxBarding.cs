@@ -94,7 +94,7 @@ public sealed class LoxBarding : MonoBehaviour
 		_character = ((Component)this).GetComponent<Character>();
 		if ((Object)(object)_net != (Object)null)
 		{
-			_net.Register<int>(RpcFit, OnFitRequest);
+			_net.Register<int, bool>(RpcFit, OnFitRequest);
 		}
 	}
 
@@ -156,22 +156,27 @@ public sealed class LoxBarding : MonoBehaviour
 		}
 	}
 
-	/// <summary>Player-initiated fit request (from the Tameable.UseItem prefix).</summary>
+	/// <summary>Player-initiated fit request (from the Tameable.UseItem prefix).
+	/// Replacing an existing barding returns the previous one to the requesting
+	/// player's inventory when possible.</summary>
 	internal void RequestFit(int tier)
 	{
 		if (IsNetValid)
 		{
-			_net.InvokeRPC(RpcFit, tier);
+			_net.InvokeRPC(RpcFit, tier, true);
 		}
 	}
 
 	/// <summary>Player-initiated removal (crouch + Use on a barded lox).</summary>
 	internal void RequestUnequip()
 	{
-		RequestFit(BardingItems.TierNone);
+		if (IsNetValid)
+		{
+			_net.InvokeRPC(RpcFit, BardingItems.TierNone, true);
+		}
 	}
 
-	private void OnFitRequest(long sender, int tier)
+	private void OnFitRequest(long sender, int tier, bool wantPickup)
 	{
 		if (!IsOwner || (tier != BardingItems.TierNone && tier != BardingItems.TierBlackMetal && tier != BardingItems.TierFlametal))
 		{
@@ -184,7 +189,11 @@ public sealed class LoxBarding : MonoBehaviour
 			{
 				return;
 			}
-			DropBarding(current, GetFloat(DurabilityKey, MaxDurability));
+			float durability = GetFloat(DurabilityKey, MaxDurability);
+			if (!ReturnToInventory(sender, wantPickup, current, durability))
+			{
+				DropBarding(current, durability);
+			}
 			SetTier(BardingItems.TierNone);
 			_net.GetZDO().Set(DurabilityKey, MaxDurability);
 			return;
@@ -198,7 +207,11 @@ public sealed class LoxBarding : MonoBehaviour
 		{
 			// Replacing one tier with another returns the previous set
 			// (with whatever wear it had accumulated).
-			DropBarding(current, GetFloat(DurabilityKey, MaxDurability));
+			float durability = GetFloat(DurabilityKey, MaxDurability);
+			if (!ReturnToInventory(sender, wantPickup, current, durability))
+			{
+				DropBarding(current, durability);
+			}
 		}
 		double worldTime = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : 0.0;
 		SetTier(tier);
@@ -206,6 +219,44 @@ public sealed class LoxBarding : MonoBehaviour
 		_net.GetZDO().Set(LastHitKey, (float)worldTime);
 		_net.GetZDO().Set(DurabilityKey, Mathf.Clamp(GetFloat(DurabilityKey, MaxDurability), 0f, MaxDurability));
 		ApplyVisual(tier);
+	}
+
+	/// <summary>When the removal/swap was requested by this machine's player,
+	/// put the barding straight into their inventory (durability preserved).
+	/// Falls back to a ground drop when the requester is another peer, the
+	/// inventory is full, or there is no local player (dedicated server).</summary>
+	private bool ReturnToInventory(long sender, bool wantPickup, int tier, float durability)
+	{
+		if (!wantPickup || (Object)(object)Player.m_localPlayer == (Object)null
+			|| sender != ZNet.GetUID())
+		{
+			return false;
+		}
+		GameObject item = MakeDrop(tier, durability);
+		if ((Object)(object)item == (Object)null)
+		{
+			return false;
+		}
+		ItemDrop drop = item.GetComponent<ItemDrop>();
+		if ((Object)(object)drop == (Object)null)
+		{
+			return false;
+		}
+		if (Player.m_localPlayer.GetInventory().AddItem(drop.m_itemData))
+		{
+			// The ItemData instance now lives in the inventory (vanilla
+			// Pickup destroys ZDO-less drops the same way).
+			Object.Destroy(item);
+			LoxPlatePlugin.Log.LogInfo("Barding returned to inventory");
+			return true;
+		}
+		// No room: leave the drop in the world with a visible pop.
+		Rigidbody body = item.GetComponent<Rigidbody>();
+		if ((Object)(object)body != (Object)null)
+		{
+			body.AddForce(Vector3.up * 4f, ForceMode.VelocityChange);
+		}
+		return false;
 	}
 
 	/// <summary>Called on the damage path before the hit is applied: lazy pool
@@ -265,15 +316,30 @@ public sealed class LoxBarding : MonoBehaviour
 	}
 
 	/// <summary>Spawn the barding item back into the world (unequip / death),
-	/// carrying its remaining durability so the forge repair means something.
-	/// </summary>
+	/// carrying its remaining durability so the forge repair means something.</summary>
 	internal void DropBarding(int tier, float durability)
+	{
+		GameObject item = MakeDrop(tier, durability);
+		if ((Object)(object)item == (Object)null)
+		{
+			return;
+		}
+		Rigidbody body = item.GetComponent<Rigidbody>();
+		if ((Object)(object)body != (Object)null)
+		{
+			body.AddForce(Vector3.up * 4f, ForceMode.VelocityChange);
+		}
+	}
+
+	/// <summary>Instantiate the barding item drop near the animal with its
+	/// stored durability, without any initial impulse.</summary>
+	private GameObject MakeDrop(int tier, float durability)
 	{
 		GameObject prefab = BardingItems.PrefabOf(tier);
 		if ((Object)(object)prefab == (Object)null)
 		{
 			LoxPlatePlugin.Log.LogWarning($"Cannot drop barding tier {tier}: prefab not registered");
-			return;
+			return null;
 		}
 		Vector3 center = (Object)(object)_character != (Object)null
 			? _character.GetCenterPoint()
@@ -288,11 +354,7 @@ public sealed class LoxBarding : MonoBehaviour
 			drop.m_itemData.m_stack = 1;
 			drop.m_itemData.m_worldLevel = (byte)(Game.instance != null ? Game.m_worldLevel : 0);
 		}
-		Rigidbody body = item.GetComponent<Rigidbody>();
-		if ((Object)(object)body != (Object)null)
-		{
-			body.AddForce(Vector3.up * 4f, ForceMode.VelocityChange);
-		}
+		return item;
 	}
 
 	internal void ClearState()
