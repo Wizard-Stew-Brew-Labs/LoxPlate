@@ -29,6 +29,12 @@ prize — barding is meant to protect loxes you have already invested in.
 3. To remove it, crouch and press **Use** while aiming at the barded lox —
    the set drops to the ground for you to pick up.
 
+Note that tamed animals are immune to player attacks while calm — that is
+vanilla behavior, and it includes the butchering knife's exceptions. Barding
+protects against **enemy** damage (raids, fulings, deathsquitos); to see it
+work, let a fuling take a swing at the lox, or use the butchering knife
+(`KnifeButcher`), the one player weapon that can strike a tame.
+
 Each lox wears one set at a time. Fitting a different tier returns the old one.
 When a barded lox dies, its barding drops with the corpse (configurable).
 Barding is fitted per animal and persists through save/load; the armor state
